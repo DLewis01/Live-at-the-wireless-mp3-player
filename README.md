@@ -1,5 +1,5 @@
 # Live-at-the-wireless-mp3-player
-Mp3 player of the old Double J exploding head graphic
+Mp3 player of the old Jackson Pollock looking Double J exploding head graphic that adorned t-shirts and sticker back in the early 80s.
 
 ![explodinghead](doublej-exploding-head.jpg)
 
@@ -10,8 +10,10 @@ I always thought we could do a better job of building the system in-house, but t
 Had we done it internally, this is the sort of visulisation what I would have liked to launch the station with, to capture those retro vibes. Think of this as a Marvel 'What-if"
 
 
-The best thing to play on this is "Whats Rangoon to you is Grafton to me" to take you back to the classic late 70s when Double J kicked off in a big way.
-I did try to have it autoload, but the hosting site doesnt set a CORS policy, blocking me from autoloading it. You'll need to download it youself here;
+The best thing to play on this is "Whats Rangoon to you is Grafton to me" to take you back to that classic era when Double J kicked off in a big way.
+
+I did try to have it autoload "Whats Rangoon to you is Grafton to me", but the hosting site doesnt set a CORS policy, blocking me from autoloading it. You'll need to download it youself here;
+
 https://www.simonrumble.com/psychedelicatessen/rangoon_edited.mp3
 https://www.simonrumble.com/psychedelicatessen/
  and load it manually.
