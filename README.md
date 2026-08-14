@@ -1,5 +1,5 @@
 # Live-at-the-wireless-mp3-player
-Visualisation player of the old Double J exploding head graphic
+Mp3 player of the old Double J exploding head graphic
 
 ![explodinghead](doublej-exploding-head.jpg)
 
