@@ -1,7 +1,7 @@
 # Live-at-the-wireless-mp3-player
 Visualisation player of the old Double J exploding head graphic
 
-![explodinghead](double-exploding-head.jpg)
+![explodinghead](doublej-exploding-head.jpg)
 
 In another life in the early days of the new century I was working for Aunty on a number of R&D projects, one of which was the launch of Dig Radio, one of Australia's first streaming radio stations. Yep I was there at it's birth. 
 
