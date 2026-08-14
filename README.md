@@ -2,11 +2,11 @@
 Visualisation player of the old Double J exploding head graphic
 
 
-In another life in the early days of the new century I was working for Aunty on a number of R&D projects, one of which was the launch of Dig Radio, one of Australian first streaming radio stations. Yep I was there at it's birth. 
+In another life in the early days of the new century I was working for Aunty on a number of R&D projects, one of which was the launch of Dig Radio, one of Australia's first streaming radio stations. Yep I was there at it's birth. 
 
 I always thought we could do a better job of building the system in-house, but the decision was made to spend a lot of your tax dollars on an external vendor to provide the software. So it goes.
  
-Had we done it internally, this is the sort of visulisation what I would have liked to launch the station with, to capture those retro vibes.
+Had we done it internally, this is the sort of visulisation what I would have liked to launch the station with, to capture those retro vibes. Think of this as a Marvel 'What-if"
 
 
 The best thing to play on this is "Whats Rangoon to you is Grafton to me" to take you back to the classic late 70s when Double J kicked off in a big way.
