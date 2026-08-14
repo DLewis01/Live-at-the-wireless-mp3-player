@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Live At The Wireless</title>
+
+
+    <style>
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+
+            margin: 0;
+            padding: 0;
+
+            background-color: #000;
+
+            color: #fff;
+
+            font-family: Arial, sans-serif;
+
+            overflow: hidden;
+        }
+
+
+        // =====================================================
+        //   VISUALIZER CANVAS
+        // ===================================================== 
+
+        #visualizer {
+
+            display: block;
+
+            position: absolute;
+
+            top: 0;
+            left: 0;
+
+            width: 100%;
+            height: 100%;
+
+            z-index: 2;
+
+            pointer-events: none;
+        }
+
+
+        // =====================================================
+        //   BACKGROUND IMAGE
+        //   The image remains centred in the window.
+        //   It keeps its original aspect ratio.
+        //   Black fills any unused space.
+        //   scale(1.10) makes the image 10% larger.
+        //   I couldn't be assed making the image again.
+        //   ===================================================== 
+
+        #backgroundImage {
+
+            position: fixed;
+
+            top: 50%;
+            left: 50%;
+
+            transform:
+                translate(-50%, -50%)
+                scale(1.10);
+
+            width: auto;
+            height: auto;
+
+            max-width: none;
+            max-height: none;
+
+            z-index: 1;
+
+            opacity: 1.0;
+
+            pointer-events: none;
+        }
+
+
+        /* =====================================================
+           CONTROLS
+           ===================================================== */
+
+        #controls {
+
+            position: absolute;
+
+            bottom: 20px;
+            left: 50%;
+
+            transform: translateX(-50%);
+
+            text-align: center;
+
+            z-index: 3;
+
+            background: rgba(0, 0, 0, 0.65);
+
+            padding: 10px;
+
+            border-radius: 6px;
+        }
+
+
+        #trackName {
+
+            margin-bottom: 8px;
+
+            font-size: 14px;
+        }
+
+        // =====================================================
+        //The central circular waveform is the time-domain waveform.
+        //The radial bars are the FFT frequency-domain spectrum.
+        // =====================================================
+
+
+        // =====================================================
+        //   FFT DISPLAY
+        // ===================================================== 
+
+        #fftSizeDisplay {
+
+            position: absolute;
+
+            top: 20px;
+            left: 50%;
+
+            transform: translateX(-50%);
+
+            font-size: 18px;
+
+            color: #fff;
+
+            z-index: 3;
+
+            background: rgba(0, 0, 0, 0.5);
+
+            padding: 5px 10px;
+
+            border-radius: 5px;
+        }
+
+
+        // =====================================================
+        //   INSTRUCTIONS
+        // ===================================================== 
+
+        #instructions {
+
+            position: absolute;
+
+            top: 50px;
+            left: 20px;
+
+            background: rgba(0, 0, 0, 0.7);
+
+            padding: 10px;
+
+            border-radius: 5px;
+
+            z-index: 4;
+        }
+
+
+        // =====================================================
+        //   BUTTONS
+        // ===================================================== 
+
+        button {
+
+            margin-left: 4px;
+
+            padding: 5px 10px;
+
+            cursor: pointer;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- =====================================================
+         VISUALIZER
+         ===================================================== -->
+
+    <canvas id="visualizer"></canvas>
+
+
+    <!-- =====================================================
+         BACKGROUND IMAGE
+         ===================================================== -->
+
+    <img
+        id="backgroundImage"
+        src="background.jpg"
+        alt="Background image"
+    >
+
+
+    <!-- =====================================================
+         CONTROLS
+         ===================================================== -->
+
+    <div id="controls">
+
+        <div id="trackName">
+            No track loaded
+        </div>
+
+        <input
+            type="file"
+            id="audioFile"
+            accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac"
+            multiple
+        >
+
+        <button id="playButton">
+            Play
+        </button>
+
+        <button id="pauseButton">
+            Pause
+        </button>
+
+    </div>
+
+
+    <!-- =====================================================
+         FFT DISPLAY
+         ===================================================== -->
+
+    <div id="fftSizeDisplay">
+        fftSize: 1024 | Amplitude: 1.0
+    </div>
+
+
+    <!-- =====================================================
+         INSTRUCTIONS
+         ===================================================== -->
+
+    <div id="instructions">
+
+        <strong>Instructions:</strong><br>
+
+        <strong>i</strong>:
+        Toggle instructions<br>
+
+        <strong>w</strong>:
+        Toggle waveform shape<br>
+
+        <strong>c</strong>:
+        Toggle circular visualizer<br>
+<!--
+        <strong>h</strong>:
+        Toggle hollow center<br>
+-->
+        <strong>o</strong>:
+        Toggle outline mode<br>
+
+        <strong>Arrow Up/Down</strong>:
+        Adjust waveform amplitude<br>
+
+        <strong>Arrow Left/Right</strong>:
+        Adjust waveform fftSize
+
+    </div>
+
+
+    <script>
+
+
+        // =====================================================
+        // DOM ELEMENTS
+        // =====================================================
+
+        const canvas =
+            document.getElementById(
+                'visualizer'
+            );
+
+        const ctx =
+            canvas.getContext('2d');
+
+        const playButton =
+            document.getElementById(
+                'playButton'
+            );
+
+        const pauseButton =
+            document.getElementById(
+                'pauseButton'
+            );
+
+        const audioFileInput =
+            document.getElementById(
+                'audioFile'
+            );
+
+        const fftSizeDisplay =
+            document.getElementById(
+                'fftSizeDisplay'
+            );
+
+        const instructions =
+            document.getElementById(
+                'instructions'
+            );
+
+        const controls =
+            document.getElementById(
+                'controls'
+            );
+
+        const trackName =
+            document.getElementById(
+                'trackName'
+            );
+
+
+        // =====================================================
+        // AUDIO STATE
+        // =====================================================
+
+        let audioElement = null;
+
+        let audioContext = null;
+
+        let analyser = null;
+
+        let source = null;
+
+        let dataArray = null;
+
+        let waveformArray = null;
+
+
+        // =====================================================
+        // PLAYLIST STATE
+        // =====================================================
+
+        let currentTrackIndex = 0;
+
+        let playlist = [];
+
+
+        // =====================================================
+        // VISUALIZER STATE
+        // =====================================================
+
+        let waveformAmplitude = 1;
+
+        let isWaveformCircular = true;
+
+        let isCircularVisualizerOn = true;
+
+        let isHollowCenter = false;
+
+        let isOutlineMode = false;
+
+	let isPlaying = false;
+
+
+        // =====================================================
+        // ANIMATION STATE
+        // =====================================================
+
+        let animationStarted = false;
+
+
+        // =====================================================
+        // CURRENT OBJECT URL
+        //
+        // Keep this separately rather than trying to revoke
+        // audioElement.src. The src is a blob URL and should
+        // be released explicitly.
+        // =====================================================
+
+        let currentObjectURL = null;
+
+
+        // =====================================================
+        // SET UP AUDIO CONTEXT
+        // =====================================================
+
+        function setupAudioContext() {
+
+            /*
+             * Create the AudioContext only once.
+             *
+             * It is deliberately NOT recreated for every
+             * track.
+             */
+
+            if (!audioContext) {
+
+                audioContext =
+                    new (
+                        window.AudioContext ||
+                        window.webkitAudioContext
+                    )();
+
+
+                analyser =
+                    audioContext.createAnalyser();
+
+
+                analyser.fftSize = 1024;
+
+
+                /*
+                 * Audio path:
+                 *
+                 * Audio element
+                 *       ↓
+                 *    Analyser
+                 *       ↓
+                 *    Speakers
+                 */
+
+                analyser.connect(
+                    audioContext.destination
+                );
+
+
+                dataArray =
+                    new Uint8Array(
+                        analyser.frequencyBinCount
+                    );
+
+
+                waveformArray =
+                    new Uint8Array(
+                        analyser.fftSize
+                    );
+            }
+
+
+            
+            // Disconnect the old MediaElementSource.
+            if (source) {
+
+                try {
+
+                    source.disconnect();
+
+                }
+                catch (error) {
+
+                    console.log(
+                        "Source disconnect:",
+                        error
+                    );
+                }
+
+                source = null;
+            }
+
+
+            // Connect the current audio element.
+
+            source =
+                audioContext.createMediaElementSource(
+                    audioElement
+                );
+
+
+            source.connect(
+                analyser
+            );
+
+
+            updateDisplay();
+        }
+
+
+        // =====================================================
+        // RESUME AUDIO CONTEXT
+        // =====================================================
+
+        async function resumeAudioContext() {
+
+            if (!audioContext)
+                return;
+
+
+            if (
+                audioContext.state ===
+                'suspended'
+            ) {
+
+                await audioContext.resume();
+            }
+        }
+
+
+        // =====================================================
+        // UPDATE DISPLAY
+        // =====================================================
+
+        function updateDisplay() {
+
+            if (!analyser)
+                return;
+
+
+            fftSizeDisplay.textContent =
+                `fftSize: ${analyser.fftSize} | ` +
+                `Amplitude: ` +
+                `${waveformAmplitude.toFixed(1)}`;
+        }
+
+
+        // =====================================================
+        // CIRCULAR FREQUENCY VISUALIZER
+        // =====================================================
+
+
+function drawCircularVisualizer() {
+
+    if (!isCircularVisualizerOn)
+        return;
+
+
+    analyser.getByteFrequencyData(
+        dataArray
+    );
+
+
+    const centerX =
+        canvas.width / 2;
+
+    const centerY =
+        canvas.height / 2;
+
+
+    const radius =
+        Math.min(
+            canvas.width,
+            canvas.height
+        ) * 0.4;
+
+
+    const bars = 360;
+
+
+    const angleStep =
+        (Math.PI * 2) / bars;
+
+
+    /*
+     * H controls the empty area in the middle.
+     */
+
+    const innerRadius =
+        isHollowCenter
+            ? radius * 0.5
+            : 0;
+
+
+    // =========================================================
+    // NORMAL / SOLID SPECTRUM
+    // =========================================================
+
+    if (!isOutlineMode) {
+
+        ctx.beginPath();
+
+
+        for (
+            let i = 0;
+            i < bars;
+            i++
+        ) {
+
+            const dataIndex =
+                Math.floor(
+                    (i / bars) *
+                    dataArray.length
+                );
+
+
+            const amplitude =
+                dataArray[dataIndex] / 255;
+
+
+            const barLength =
+                amplitude * radius;
+
+
+            const angle =
+                i * angleStep -
+                Math.PI / 2;
+
+
+            const startRadius =
+                innerRadius;
+
+
+            const endRadius =
+                innerRadius +
+                barLength;
+
+
+            /*
+             * Original side.
+             */
+
+            const x1 =
+                centerX +
+                Math.cos(angle) *
+                startRadius;
+
+
+            const y1 =
+                centerY +
+                Math.sin(angle) *
+                startRadius;
+
+
+            const x2 =
+                centerX +
+                Math.cos(angle) *
+                endRadius;
+
+
+            const y2 =
+                centerY +
+                Math.sin(angle) *
+                endRadius;
+
+
+            ctx.moveTo(x1, y1);
+
+            ctx.lineTo(x2, y2);
+
+
+            /*
+             * Mirrored side.
+             */
+
+            const mirroredAngle =
+                -angle - Math.PI;
+
+
+            const x3 =
+                centerX +
+                Math.cos(mirroredAngle) *
+                startRadius;
+
+
+            const y3 =
+                centerY +
+                Math.sin(mirroredAngle) *
+                startRadius;
+
+
+            const x4 =
+                centerX +
+                Math.cos(mirroredAngle) *
+                endRadius;
+
+
+            const y4 =
+                centerY +
+                Math.sin(mirroredAngle) *
+                endRadius;
+
+
+            ctx.moveTo(x3, y3);
+
+            ctx.lineTo(x4, y4);
+        }
+
+
+        ctx.strokeStyle =
+            'yellow';
+
+        ctx.lineWidth =
+            4;
+
+        ctx.stroke();
+
+
+        return;
+    }
+
+
+    // =========================================================
+    // OUTLINE SPECTRUM
+    //
+    // Build the outline of the frequency shape.
+    //
+    // IMPORTANT:
+    //
+    // We do NOT draw from the centre.
+    //
+    // The inner edge and outer edge of the spectrum are
+    // separate paths.
+    // =========================================================
+
+
+    function drawSpectrumOutline(
+        mirror
+    ) {
+
+        /*
+         * Outer edge.
+         */
+
+        ctx.beginPath();
+
+
+        for (
+            let i = 0;
+            i < bars;
+            i++
+        ) {
+
+            const dataIndex =
+                Math.floor(
+                    (i / bars) *
+                    dataArray.length
+                );
+
+
+            const amplitude =
+                dataArray[dataIndex] / 255;
+
+
+            const outerRadius =
+                innerRadius +
+                amplitude * radius;
+
+
+            let angle =
+                i * angleStep -
+                Math.PI / 2;
+
+
+            if (mirror) {
+
+                angle =
+                    -angle - Math.PI;
+            }
+
+
+            const x =
+                centerX +
+                Math.cos(angle) *
+                outerRadius;
+
+
+            const y =
+                centerY +
+                Math.sin(angle) *
+                outerRadius;
+
+
+            if (i === 0) {
+
+                ctx.moveTo(x, y);
+
+            }
+            else {
+
+                ctx.lineTo(x, y);
+            }
+        }
+
+
+        ctx.strokeStyle =
+            'yellow';
+
+        ctx.lineWidth =
+            3;
+
+        ctx.stroke();
+
+
+        /*
+         * Inner edge.
+         *
+         * This is important:
+         *
+         * We only draw it when there is a hollow centre.
+         *
+         * We do NOT draw radial lines back to the centre.
+         */
+
+        if (isHollowCenter) {
+
+            ctx.beginPath();
+
+
+            for (
+                let i = 0;
+                i < bars;
+                i++
+            ) {
+
+                let angle =
+                    i * angleStep -
+                    Math.PI / 2;
+
+
+                if (mirror) {
+
+                    angle =
+                        -angle - Math.PI;
+                }
+
+
+                const x =
+                    centerX +
+                    Math.cos(angle) *
+                    innerRadius;
+
+
+                const y =
+                    centerY +
+                    Math.sin(angle) *
+                    innerRadius;
+
+
+                if (i === 0) {
+
+                    ctx.moveTo(x, y);
+
+                }
+                else {
+
+                    ctx.lineTo(x, y);
+                }
+            }
+
+
+            ctx.strokeStyle =
+                'yellow';
+
+            ctx.lineWidth =
+                2;
+
+            ctx.stroke();
+        }
+    }
+
+
+    /*
+     * Draw BOTH mirrored spectrum outlines.
+     */
+
+    drawSpectrumOutline(false);
+
+    drawSpectrumOutline(true);
+}
+
+
+
+
+
+
+
+
+
+
+        // =====================================================
+        // WAVEFORM
+        // =====================================================
+
+        function drawWaveform() {
+
+            analyser.getByteTimeDomainData(
+                waveformArray
+            );
+
+
+            ctx.beginPath();
+
+
+            ctx.strokeStyle =
+                'yellow';
+
+
+            ctx.lineWidth = 2;
+
+
+            if (isWaveformCircular) {
+
+                const centerX =
+                    canvas.width / 2;
+
+                const centerY =
+                    canvas.height / 2;
+
+
+                const radius =
+                    Math.min(
+                        canvas.width,
+                        canvas.height
+                    ) * 0.05;
+
+
+                const angleStep =
+                    (Math.PI * 2) /
+                    waveformArray.length;
+
+
+                for (
+                    let i = 0;
+                    i < waveformArray.length;
+                    i++
+                ) {
+
+                    const amplitude =
+                        (
+                            waveformArray[i] /
+                            128 -
+                            1
+                        ) *
+                        waveformAmplitude *
+                        15;
+
+
+                    const angle =
+                        i *
+                        angleStep;
+
+
+                    const x =
+                        centerX +
+                        Math.cos(angle) *
+                        (
+                            radius +
+                            amplitude *
+                            radius
+                        );
+
+
+                    const y =
+                        centerY +
+                        Math.sin(angle) *
+                        (
+                            radius +
+                            amplitude *
+                            radius
+                        );
+
+
+                    if (i === 0) {
+
+                        ctx.moveTo(
+                            x,
+                            y
+                        );
+
+                    }
+                    else {
+
+                        ctx.lineTo(
+                            x,
+                            y
+                        );
+                    }
+                }
+
+
+                ctx.closePath();
+
+            }
+            else {
+
+                const waveformHeight =
+                    100;
+
+
+                const waveformY =
+                    canvas.height / 2;
+
+
+                for (
+                    let i = 0;
+                    i < waveformArray.length;
+                    i++
+                ) {
+
+                    const x =
+                        (
+                            i /
+                            waveformArray.length
+                        ) *
+                        canvas.width;
+
+
+                    const y =
+                        waveformY +
+                        (
+                            waveformArray[i] /
+                            128 -
+                            1
+                        ) *
+                        waveformHeight *
+                        waveformAmplitude;
+
+
+                    if (i === 0) {
+
+                        ctx.moveTo(
+                            x,
+                            y
+                        );
+
+                    }
+                    else {
+
+                        ctx.lineTo(
+                            x,
+                            y
+                        );
+                    }
+                }
+            }
+
+
+            ctx.stroke();
+        }
+
+
+        // =====================================================
+        // CLEAR VISUALIZER
+        // =====================================================
+
+        function clearVisualizer() {
+
+            ctx.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        }
+
+
+        // =====================================================
+        // START ANIMATION
+        //
+        // Only one animation loop is ever created.
+        // =====================================================
+
+
+	function startAnimation() {
+
+        if (animationStarted)
+            return;
+        animationStarted = true;
+        function animate() {
+            clearVisualizer();
+            if (analyser && isPlaying) {
+                drawCircularVisualizer();
+                drawWaveform();
+            }
+            requestAnimationFrame(animate);
+        }
+        animate();
+    }
+ 
+
+
+    function startAnimation() {
+
+        if (animationStarted)
+            return;
+
+        animationStarted = true;
+
+        function animate() {
+
+            ctx.clearRect(
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+
+            if (
+                analyser &&
+                isPlaying
+            ) {
+
+                drawCircularVisualizer();
+
+                drawWaveform();
+            }
+
+            requestAnimationFrame(
+                animate
+            );
+        }
+
+        animate();
+    }
+
+        // =====================================================
+        // LOAD TRACK
+        // =====================================================
+
+        function loadTrack(file) {
+
+	    isPlaying = false;
+            console.log(
+                "Loading file:",
+                file.name,
+                "Type:",
+                file.type
+            );
+
+
+            /*
+             * Stop previous track.
+             */
+
+            if (audioElement) {
+
+                audioElement.pause();
+
+                audioElement.removeAttribute(
+                    'src'
+                );
+
+                audioElement.load();
+
+                audioElement.remove();
+            }
+
+
+            /*
+             * Disconnect previous source.
+             */
+
+            if (source) {
+
+                try {
+
+                    source.disconnect();
+
+                }
+                catch (error) {
+
+                    console.log(
+                        "Source disconnect:",
+                        error
+                    );
+                }
+
+                source = null;
+            }
+
+
+            /*
+             * Release previous object URL.
+             */
+
+            if (currentObjectURL) {
+
+                URL.revokeObjectURL(
+                    currentObjectURL
+                );
+
+                currentObjectURL = null;
+            }
+
+
+            /*
+             * Create a new audio element.
+             */
+
+            audioElement =
+                document.createElement(
+                    'audio'
+                );
+
+
+            audioElement.id =
+                'audioBackground';
+
+
+            audioElement.controls =
+                false;
+
+
+            audioElement.preload =
+                'auto';
+
+
+            document.body.appendChild(
+                audioElement
+            );
+
+
+            /*
+             * Create local object URL.
+             */
+
+            currentObjectURL =
+                URL.createObjectURL(
+                    file
+                );
+
+
+            audioElement.src =
+                currentObjectURL;
+
+
+            /*
+             * Update track name.
+             */
+
+            trackName.textContent =
+                `Track: ${file.name}`;
+
+
+            /*
+             * Audio has loaded enough to initialise
+             * the Web Audio connection.
+             */
+
+            audioElement.addEventListener(
+                'loadeddata',
+                async function () {
+
+                    console.log(
+                        "Audio loaded:",
+                        file.name
+                    );
+
+
+                    try {
+
+                        setupAudioContext();
+
+
+                        startAnimation();
+
+
+                        /*
+                         * Resume the AudioContext.
+                         */
+
+                        await resumeAudioContext();
+
+
+                        /*
+                         * Attempt autoplay.
+                         *
+                         * If the browser blocks it, the user
+                         * can press Play.
+                         */
+
+                        await audioElement.play();
+
+
+                    }
+                    catch (error) {
+
+                        console.log(
+                            "Automatic playback was blocked. " +
+                            "Press Play.",
+                            error
+                        );
+
+
+                        trackName.textContent =
+                            `Track: ${file.name} — press Play`;
+                    }
+
+
+                    updateDisplay();
+
+                },
+                {
+                    once: true
+                }
+            );
+
+
+            /*
+             * Pause event.
+             *
+             * This removes the last visual frame,
+             * including the central yellow ring.
+             */
+
+            audioElement.addEventListener(
+                'pause',
+                function () {
+		    isPlaying = false;
+                    clearVisualizer();
+                }
+            );
+
+
+            //event handlers
+            audioElement.addEventListener(
+                'pause',
+                function () {
+                isPlaying = false;
+                clearVisualizer();
+                }
+            );
+        
+            audioElement.addEventListener(
+                'play',
+                function () {
+                    isPlaying = true;
+                }
+            );
+
+            audioElement.addEventListener(
+                'playing',
+                function () {
+                    isPlaying = true;
+                }
+            );
+
+
+	    //loading error
+
+            audioElement.addEventListener(
+                'error',
+                function () {
+
+                    console.error(
+                        "Audio error:",
+                        audioElement.error
+                    );
+
+
+                    trackName.textContent =
+                        `Failed to load: ${file.name}`;
+
+                },
+                {
+                    once: true
+                }
+            );
+        }
+
+
+        // =====================================================
+        // FILE SELECTION
+        // =====================================================
+
+        audioFileInput.addEventListener(
+            'change',
+            function (event) {
+
+                const files =
+                    event.target.files;
+
+
+                if (
+                    !files ||
+                    files.length === 0
+                )
+                    return;
+
+
+                playlist = [];
+
+
+                for (
+                    const file of files
+                ) {
+
+                    const filename =
+                        file.name.toLowerCase();
+
+
+                    if (
+                        file.type.startsWith(
+                            'audio/'
+                        ) ||
+
+                        filename.endsWith(
+                            '.mp3'
+                        ) ||
+
+                        filename.endsWith(
+                            '.m4a'
+                        ) ||
+
+                        filename.endsWith(
+                            '.wav'
+                        ) ||
+
+                        filename.endsWith(
+                            '.ogg'
+                        ) ||
+
+                        filename.endsWith(
+                            '.aac'
+                        )
+                    ) {
+
+                        playlist.push(
+                            file
+                        );
+                    }
+                }
+
+
+                if (
+                    playlist.length > 0
+                ) {
+
+                    currentTrackIndex = 0;
+
+
+                    loadTrack(
+                        playlist[
+                            currentTrackIndex
+                        ]
+                    );
+
+
+                    /*
+                     * Allows the same file to be selected
+                     * again later.
+                     */
+
+                    event.target.value = '';
+
+                }
+
+            }
+        );
+
+
+        // =====================================================
+        // PLAY NEXT TRACK
+        // =====================================================
+
+        function playNextTrack() {
+
+            if (
+                playlist.length === 0
+            )
+                return;
+
+
+            currentTrackIndex++;
+
+
+            if (
+                currentTrackIndex >=
+                playlist.length
+            ) {
+
+                currentTrackIndex = 0;
+            }
+
+
+            loadTrack(
+                playlist[
+                    currentTrackIndex
+                ]
+            );
+        }
+
+
+        // =====================================================
+        // PLAY BUTTON
+        // =====================================================
+
+        playButton.addEventListener(
+            'click',
+            async function () {
+
+                if (!audioElement)
+                    return;
+
+
+                try {
+
+                    await resumeAudioContext();
+
+
+                    await audioElement.play();
+
+
+                    trackName.textContent =
+                        `Track: ${
+                            playlist[
+                                currentTrackIndex
+                            ]?.name || ''
+                        }`;
+
+                }
+                catch (error) {
+
+                    console.error(
+                        "Unable to play audio:",
+                        error
+                    );
+                }
+
+            }
+        );
+
+
+        // =====================================================
+        // PAUSE BUTTON
+        // =====================================================
+
+        pauseButton.addEventListener(
+            'click',
+            function () {
+
+                if (
+                    audioElement &&
+                    !audioElement.paused
+                ) {
+
+                    audioElement.pause();
+
+                }
+            }
+        );
+
+
+        // =====================================================
+        // KEYBOARD CONTROLS
+        // =====================================================
+
+        document.addEventListener(
+            'keydown',
+            function (event) {
+
+                /*
+                 * Waveform shape
+                 */
+
+                if (
+                    event.key === 'w'
+                ) {
+
+                    isWaveformCircular =
+                        !isWaveformCircular;
+
+
+                    console.log(
+                        `Waveform shape: ${
+                            isWaveformCircular
+                                ? 'Circular'
+                                : 'Straight Line'
+                        }`
+                    );
+                }
+
+
+                /*
+                 * Circular visualizer
+                 */
+
+                else if (
+                    event.key === 'c'
+                ) {
+
+                    isCircularVisualizerOn =
+                        !isCircularVisualizerOn;
+
+
+                    console.log(
+                        `Circular visualizer: ${
+                            isCircularVisualizerOn
+                                ? 'On'
+                                : 'Off'
+                        }`
+                    );
+                }
+
+
+                /*
+                 * Hollow centre
+                 */
+/*
+                else if (
+                    event.key === 'h'
+                ) {
+
+                    isHollowCenter =
+                        !isHollowCenter;
+
+
+                    console.log(
+                        `Hollow center: ${
+                            isHollowCenter
+                                ? 'On'
+                                : 'Off'
+                        }`
+                    );
+                }
+*/
+
+                /*
+                 * Outline mode
+                 */
+
+                else if (
+                    event.key === 'o'
+                ) {
+
+                    isOutlineMode =
+                        !isOutlineMode;
+
+
+                    console.log(
+                        `Outline mode: ${
+                            isOutlineMode
+                                ? 'On'
+                                : 'Off'
+                        }`
+                    );
+                }
+
+
+                /*
+                 * Instructions
+                 */
+
+                else if (
+                    event.key === 'i'
+                ) {
+
+                    const isVisible =
+                        instructions.style.display !==
+                        'none';
+
+
+                    instructions.style.display =
+                        isVisible
+                            ? 'none'
+                            : 'block';
+
+
+                    fftSizeDisplay.style.display =
+                        isVisible
+                            ? 'none'
+                            : 'block';
+
+
+                    controls.style.display =
+                        isVisible
+                            ? 'none'
+                            : 'block';
+
+
+                    console.log(
+                        `Interface: ${
+                            isVisible
+                                ? 'Hidden'
+                                : 'Visible'
+                        }`
+                    );
+                }
+
+            }
+        );
+
+
+        // =====================================================
+        // FFT AND AMPLITUDE CONTROLS
+        // =====================================================
+
+        document.addEventListener(
+            'keydown',
+            function (event) {
+
+                /*
+                 * Don't attempt to access analyser before
+                 * an audio file has been loaded.
+                 */
+
+                if (!analyser)
+                    return;
+
+
+                /*
+                 * Decrease FFT size
+                 */
+
+                if (
+                    event.key ===
+                    'ArrowLeft'
+                ) {
+
+                    analyser.fftSize =
+                        Math.max(
+                            256,
+                            analyser.fftSize / 2
+                        );
+
+
+                    waveformArray =
+                        new Uint8Array(
+                            analyser.fftSize
+                        );
+
+
+                    updateDisplay();
+
+
+                    console.log(
+                        `fftSize decreased to ${
+                            analyser.fftSize
+                        }`
+                    );
+                }
+
+
+                /*
+                 * Increase FFT size
+                 */
+
+                else if (
+                    event.key ===
+                    'ArrowRight'
+                ) {
+
+                    analyser.fftSize =
+                        Math.min(
+                            8192,
+                            analyser.fftSize * 2
+                        );
+
+
+                    waveformArray =
+                        new Uint8Array(
+                            analyser.fftSize
+                        );
+
+
+                    updateDisplay();
+
+
+                    console.log(
+                        `fftSize increased to ${
+                            analyser.fftSize
+                        }`
+                    );
+                }
+
+
+                /*
+                 * Increase waveform amplitude
+                 */
+
+                else if (
+                    event.key ===
+                    'ArrowUp'
+                ) {
+
+                    waveformAmplitude =
+                        Math.min(
+                            2,
+                            waveformAmplitude +
+                            0.1
+                        );
+
+
+                    updateDisplay();
+
+
+                    console.log(
+                        `Waveform amplitude increased to ${
+                            waveformAmplitude.toFixed(1)
+                        }`
+                    );
+                }
+
+
+                /*
+                 * Decrease waveform amplitude
+                 */
+
+                else if (
+                    event.key ===
+                    'ArrowDown'
+                ) {
+
+                    waveformAmplitude =
+                        Math.max(
+                            0.1,
+                            waveformAmplitude -
+                            0.1
+                        );
+
+
+                    updateDisplay();
+
+
+                    console.log(
+                        `Waveform amplitude decreased to ${
+                            waveformAmplitude.toFixed(1)
+                        }`
+                    );
+                }
+
+            }
+        );
+
+
+        // =====================================================
+        // CANVAS RESIZE
+        // =====================================================
+
+        function resizeCanvas() {
+
+            canvas.width =
+                window.innerWidth;
+
+
+            canvas.height =
+                window.innerHeight;
+
+
+            /*
+             * Resizing a canvas clears it automatically,
+             * so there is no need to redraw anything here.
+             */
+        }
+
+
+        window.addEventListener(
+            'resize',
+            resizeCanvas
+        );
+
+
+        resizeCanvas();
+
+
+        // =====================================================
+        // START THE VISUALIZER LOOP
+        // =====================================================
+
+        startAnimation();
+
+
+    </script>
+
+</body>
+
+</html>
+
